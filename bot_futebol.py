@@ -235,38 +235,36 @@ def tarefa_diaria():
         salvar_log(erro)
         enviar_mensagem_telegram(erro)
 
-# ===== EXECUÇÃO PRINCIPAL =====
+# ===== EXECUÇÃO PRINCIPAL ===== 
 if __name__ == "__main__":
-    print("⏳ Bot iniciado! Agendado para rodar diariamente às 7h da manhã (horário de Brasília)...")
-
-    # Executar tarefa imediatamente ao iniciar (opcional)
-    tarefa_diaria()
-
-    # Configuração do agendamento para 7h da manhã (horário de Brasília)
-    def agendar_tarefa():
+    logging.info("🚀 Iniciando Bot de Futebol")
+    
+    if IS_GITHUB_ACTIONS:
+        logging.info("🔧 Modo GitHub Actions ativado")
+        # Força o fuso horário para BRT mesmo executando em UTC
+        os.environ['TZ'] = 'America/Sao_Paulo'
+        time.tzset()
+        
+        # Execução imediata e única
+        tarefa_diaria()
+    else:
+        logging.info("⏰ Modo Render - Agendando para 7h BRT (10h UTC)")
+        
+        # Executa imediatamente (opcional)
+        tarefa_diaria()
+        
+        # Configura o agendamento para 10:00 UTC (7:00 BRT)
+        schedule.every().day.at("10:00").do(tarefa_diaria)
+        
+        # Loop principal
         while True:
+            schedule.run_pending()
+            
+            # Verificação adicional para horário local (backup)
             agora = datetime.now(fuso_brasil)
-            
-            # Verifica se é 7h da manhã
             if agora.hour == 7 and agora.minute == 0:
-                print(f"🕖 Executando tarefa agendada às {agora.strftime('%H:%M')} (BRT)")
+                logging.info("⏰ Acionamento por horário local (7h BRT)")
                 tarefa_diaria()
-                
-                # Espera 1 minuto para evitar múltiplas execuções
-                time.sleep(60)
+                time.sleep(60)  # Evita múltiplas execuções
             
-            # Verifica a cada 30 segundos
             time.sleep(30)
-
-    # Inicia o agendador em uma thread separada
-    import threading
-    agendador = threading.Thread(target=agendar_tarefa)
-    agendador.daemon = True
-    agendador.start()
-
-    # Mantém o programa principal em execução
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("👋 Encerrando o bot...")
