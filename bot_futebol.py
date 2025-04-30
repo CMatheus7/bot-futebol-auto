@@ -9,6 +9,11 @@ import logging
 import schedule
 import time
 
+# === CONFIGURAÇÕES ===
+API_KEY = '725ec13647cb4c8fb762c0703b231011'
+TELEGRAM_TOKEN = '7493774591:AAH1lKcP6JBDxTecfKS9bmyfnZkLOZ2GWh4'
+CHAT_ID = '-1002672810278'
+
 
 headers = {'X-Auth-Token': API_KEY}
 logging.basicConfig(level=logging.INFO)
