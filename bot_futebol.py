@@ -15,11 +15,9 @@ TELEGRAM_TOKEN = '7493774591:AAH1lKcP6JBDxTecfKS9bmyfnZkLOZ2GWh4'
 CHAT_ID = '-1002672810278'
 API_URL = "https://api.football-data.org/v4"
 
-
 headers = {'X-Auth-Token': API_KEY}
 logging.basicConfig(level=logging.INFO)
 fuso_brasil = pytz.timezone('America/Sao_Paulo')
-
 
 # ===== BANDEIRAS DAS LIGAS =====
 BANDERAS_LIGAS = {
@@ -217,14 +215,36 @@ def tarefa_diaria():
 
 # ===== EXECUÇÃO PRINCIPAL =====
 if __name__ == "__main__":
-    print("⏳ Bot iniciado! Aguardando horário...")
+    print("⏳ Bot iniciado! Agendado para rodar diariamente às 7h da manhã (horário de Brasília)...")
 
-    # Executar tarefa imediatamente ao iniciar
+    # Executar tarefa imediatamente ao iniciar (opcional)
     tarefa_diaria()
 
-    # Agendar para rodar todo dia às 07:40
-    schedule.every().day.at("20:55").do(tarefa_diaria)
+    # Configuração do agendamento para 7h da manhã (horário de Brasília)
+    def agendar_tarefa():
+        while True:
+            agora = datetime.now(fuso_brasil)
+            
+            # Verifica se é 7h da manhã
+            if agora.hour == 7 and agora.minute == 0:
+                print(f"🕖 Executando tarefa agendada às {agora.strftime('%H:%M')} (BRT)")
+                tarefa_diaria()
+                
+                # Espera 1 minuto para evitar múltiplas execuções
+                time.sleep(60)
+            
+            # Verifica a cada 30 segundos
+            time.sleep(30)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(1)  # Checagem a cada 1 segundo para maior precisão
+    # Inicia o agendador em uma thread separada
+    import threading
+    agendador = threading.Thread(target=agendar_tarefa)
+    agendador.daemon = True
+    agendador.start()
+
+    # Mantém o programa principal em execução
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("👋 Encerrando o bot...")
