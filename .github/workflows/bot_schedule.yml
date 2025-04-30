@@ -1,0 +1,30 @@
+name: Agendador do Bot de Futebol
+on:
+  schedule:
+    - cron: '0 10 * * *'  # 10:00 UTC = 07:00 BRT (Horário de Brasília)
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pytz python-telegram-bot schedule
+
+      - name: Executar Bot
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          python bot_futebol.py
