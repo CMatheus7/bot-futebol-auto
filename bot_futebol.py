@@ -9,6 +9,13 @@ import logging
 import schedule
 import time
 
+# Verifica se está sendo executado pelo GitHub Actions
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    print("🔄 Executando via GitHub Actions")
+    # Força o fuso horário para BRT
+    os.environ['TZ'] = 'America/Sao_Paulo'
+    time.tzset()
+
 # === CONFIGURAÇÕES ===
 API_KEY = '725ec13647cb4c8fb762c0703b231011'
 TELEGRAM_TOKEN = '7493774591:AAH1lKcP6JBDxTecfKS9bmyfnZkLOZ2GWh4'
@@ -18,6 +25,15 @@ API_URL = "https://api.football-data.org/v4"
 headers = {'X-Auth-Token': API_KEY}
 logging.basicConfig(level=logging.INFO)
 fuso_brasil = pytz.timezone('America/Sao_Paulo')
+
+
+# Verifica se está sendo executado pelo GitHub Actions
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    print("🔄 Executando via GitHub Actions")
+    # Força o fuso horário para BRT
+    os.environ['TZ'] = 'America/Sao_Paulo'
+    time.tzset()
+
 
 # ===== BANDEIRAS DAS LIGAS =====
 BANDERAS_LIGAS = {
