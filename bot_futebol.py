@@ -13,6 +13,7 @@ import time
 API_KEY = '725ec13647cb4c8fb762c0703b231011'
 TELEGRAM_TOKEN = '7493774591:AAH1lKcP6JBDxTecfKS9bmyfnZkLOZ2GWh4'
 CHAT_ID = '-1002672810278'
+API_URL = "https://api.football-data.org/v4"
 
 
 headers = {'X-Auth-Token': API_KEY}
