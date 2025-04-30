@@ -9,21 +9,12 @@ import logging
 import schedule
 import time
 
-# === CONFIGURAÇÕES ===
-API_KEY = '725ec13647cb4c8fb762c0703b231011'
-TELEGRAM_TOKEN = '7493774591:AAH1lKcP6JBDxTecfKS9bmyfnZkLOZ2GWh4'
-CHAT_ID = '-1002672810278'
-HORA_ENVIO = "20:15"
-
-headers = {'X-Auth-Token': API_KEY}
-logging.basicConfig(level=logging.INFO)
-fuso_brasil = pytz.timezone('America/Sao_Paulo')
-
 # ===== CONFIGURAÇÕES GERAIS =====
-API_KEY = '725ec13647cb4c8fb762c0703b231011'  # Sua chave da API football-data.org
-TELEGRAM_TOKEN = '7664394208:AAE-ZIWIUfAqBY47C2CSq3wnna1G8LGYuBE'  # Token do bot Telegram
-CHAT_ID = '-1002672810278'  # ID do chat ou canal para enviar mensagens
-API_URL = "https://api.football-data.org/v4"  # URL base da API de jogos
+# Use variáveis de ambiente para maior segurança
+API_KEY = os.getenv('API_KEY', '725ec13647cb4c8fb762c0703b231011')  # Valor padrão apenas para desenvolvimento
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '7664394208:AAE-ZIWIUfAqBY47C2CSq3wnna1G8LGYuBE')
+CHAT_ID = os.getenv('CHAT_ID', '-1002672810278')
+API_URL = "https://api.football-data.org/v4"
 
 # Headers da API
 headers = {
@@ -33,14 +24,11 @@ headers = {
 # Configura o fuso horário brasileiro
 fuso_brasil = pytz.timezone('America/Sao_Paulo')
 
-# Configurações de log para console e arquivo
+# Configurações de log simplificadas para o Render
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(f"log_{datetime.now(fuso_brasil).strftime('%d-%m-%Y')}.txt"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()]
 )
 
 # ===== BANDEIRAS DAS LIGAS =====
@@ -50,10 +38,6 @@ BANDERAS_LIGAS = {
     'Campeonato Brasileiro Série A': '🇧🇷', 'La Liga': '🇪🇸',
     'Championship': '🏴', 'Liga Profesional de Fútbol': '🇦🇷',
     'Major League Soccer': '🇺🇸', 'J1 League': '🇯🇵', 'Süper Lig': '🇹🇷',
-    'Russian Premier League': '🇷🇺', 'Belgian Pro League': '🇧🇪',
-    'Swiss Super League': '🇨🇭', 'Scottish Premiership': '🏴',
-    'Superliga Argentina': '🇦🇷', 'Liga MX': '🇲🇽', 'Serie B': '🇮🇹',
-    'Segunda División': '🇪🇸', 'Brasileirão Série B': '🇧🇷', 'Liga Portugal 2': '🇵🇹',
 }
 
 # ===== LIGAS E TIMES INTERESSANTES =====
@@ -75,7 +59,7 @@ FAVORITOS = [
 # ===== FUNÇÕES AUXILIARES =====
 
 def salvar_log(mensagem_log):
-    """Salva uma mensagem de log no arquivo do dia."""
+    """Salva uma mensagem de log."""
     logging.info(mensagem_log)
 
 def é_jogo_interessante(liga, home, away):
@@ -90,65 +74,29 @@ def é_jogo_interessante(liga, home, away):
 def obter_data_referencia():
     """Define se deve buscar jogos de hoje ou de amanhã baseado no horário."""
     agora = datetime.now(fuso_brasil)
-    print(f"Horário no Brasil: {agora.strftime('%d/%m/%Y %H:%M')}")
+    salvar_log(f"Horário no Brasil: {agora.strftime('%d/%m/%Y %H:%M')}")
     if agora.hour >= 21:
         data_ref = agora + timedelta(days=1)
         descricao = "amanhã"
     else:
         data_ref = agora
         descricao = "hoje"
-    print(f"Buscando jogos de {descricao} ({data_ref.strftime('%d/%m/%Y')})")
+    salvar_log(f"Buscando jogos de {descricao} ({data_ref.strftime('%d/%m/%Y')})")
     return data_ref, descricao
-
-def ler_csv_existente(caminho_csv):
-    """Lê o CSV existente para evitar duplicidade de jogos."""
-    jogos_existentes = set()
-    if os.path.exists(caminho_csv):
-        with open(caminho_csv, mode='r', newline='', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            next(reader)
-            for row in reader:
-                liga, hora, home, away = row
-                jogos_existentes.add((liga, hora.strip(), home.strip(), away.strip()))
-    return jogos_existentes
-
-def gerar_csv_jogos(jogos_por_liga, data_hoje):
-    """Gera ou atualiza um arquivo CSV com os jogos interessantes."""
-    caminho_csv = f"jogos_{data_hoje.replace('/', '-')}.csv"
-    jogos_existentes = ler_csv_existente(caminho_csv)
-    novos_jogos = 0
-
-    with open(caminho_csv, mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        if file.tell() == 0:
-            writer.writerow(["Liga", "Hora", "Time da Casa", "Time Visitante"])
-
-        for liga, jogos in jogos_por_liga.items():
-            for jogo in jogos:
-                hora, teams = jogo.split(" - ")
-                home, away = teams.replace("*", "").split(" 🆚 ")
-                if (liga, hora.strip(), home.strip(), away.strip()) not in jogos_existentes:
-                    writer.writerow([liga, hora.strip(), home.strip(), away.strip()])
-                    jogos_existentes.add((liga, hora.strip(), home.strip(), away.strip()))
-                    novos_jogos += 1
-
-    print(f"✅ CSV atualizado: {caminho_csv} | {novos_jogos} novos jogos adicionados")
-    salvar_log(f"CSV atualizado com {novos_jogos} novos jogos")
-    return caminho_csv
 
 def get_jogos_do_dia(data_api):
     """Busca os jogos do dia através da API."""
     url = f'{API_URL}/matches?date={data_api}'
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
         data = response.json()
         jogos = data.get('matches', [])
         jogos_por_liga = defaultdict(list)
 
         for match in jogos:
             if match.get('status', '') == 'FINISHED':
-                continue  # Ignora jogos já finalizados
+                continue
             liga = match['competition']['name']
             utc_time = match['utcDate']
             horario_utc = datetime.fromisoformat(utc_time.replace('Z', '+00:00')).replace(tzinfo=pytz.UTC)
@@ -156,26 +104,25 @@ def get_jogos_do_dia(data_api):
             hora_formatada = horario_brasil.strftime('%H:%M')
             home = match['homeTeam']['name']
             away = match['awayTeam']['name']
-            linha = f"{hora_formatada} - *{home}* 🆚 *{away}*"
+            linha = f"{hora_formatada} - {home} 🆚 {away}"
             jogos_por_liga[liga].append(linha)
 
         salvar_log(f"API retornou {len(jogos)} jogos")
         return jogos_por_liga
-    else:
-        salvar_log(f"Erro API {response.status_code}: {response.text}")
-        print(f"Erro ao acessar a API: {response.status_code}")
+    except Exception as e:
+        salvar_log(f"Erro ao acessar API: {str(e)}")
         return {}
 
 def montar_mensagem_formatada(jogos_por_liga, descricao_data):
-    """Monta a mensagem que será enviada para o Telegram."""
-    mensagem = f"📅 *CSBOT*\n*Jogos em destaque {descricao_data}:*\n\n"
+    """Monta a mensagem para o Telegram."""
+    mensagem = f"📅 *Jogos em destaque {descricao_data}:*\n\n"
     encontrou_jogos = False
 
     for liga, jogos in jogos_por_liga.items():
         jogos_interessantes = []
         for jogo in sorted(jogos):
             hora, teams = jogo.split(" - ")
-            home, away = teams.replace("*", "").split(" 🆚 ")
+            home, away = teams.split(" 🆚 ")
             if é_jogo_interessante(liga, home.strip(), away.strip()):
                 jogos_interessantes.append((hora.strip(), home.strip(), away.strip()))
 
@@ -198,7 +145,7 @@ def montar_mensagem_formatada(jogos_por_liga, descricao_data):
     return mensagem
 
 def enviar_mensagem_telegram(mensagem):
-    """Envia a mensagem formatada para o Telegram."""
+    """Envia a mensagem para o Telegram."""
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         'chat_id': CHAT_ID,
@@ -206,47 +153,44 @@ def enviar_mensagem_telegram(mensagem):
         'parse_mode': 'Markdown',
         'disable_web_page_preview': True
     }
-    response = requests.post(url, data=payload)
-    if response.status_code == 200:
-        print("✅ Mensagem enviada para o Telegram com sucesso!")
-        salvar_log("Mensagem enviada para o Telegram")
-    else:
-        print("Erro ao enviar mensagem para o Telegram:", response.text)
-        salvar_log(f"Erro ao enviar mensagem Telegram: {response.text}")
+    try:
+        response = requests.post(url, data=payload, timeout=10)
+        response.raise_for_status()
+        salvar_log("Mensagem enviada para o Telegram com sucesso!")
+    except Exception as e:
+        salvar_log(f"Erro ao enviar mensagem Telegram: {str(e)}")
 
 def tarefa_diaria():
-    """Função principal que executa toda a rotina diária."""
+    """Função principal que executa toda a rotina."""
     try:
         data_ref, descricao_data = obter_data_referencia()
         data_formatada_api = data_ref.strftime('%Y-%m-%d')
-        data_formatada_csv = data_ref.strftime('%d/%m/%Y')
 
         jogos_por_liga = get_jogos_do_dia(data_formatada_api)
 
         if jogos_por_liga:
-            gerar_csv_jogos(jogos_por_liga, data_formatada_csv)
             mensagem = montar_mensagem_formatada(jogos_por_liga, descricao_data)
             enviar_mensagem_telegram(mensagem)
         else:
-            print("❌ Nenhum jogo encontrado para a data solicitada.")
             salvar_log("Nenhum jogo encontrado na data solicitada")
 
     except Exception as e:
-        erro = f"❌ *Erro durante a execução:*\n`{str(e)}`"
-        print(erro)
+        erro = f"❌ Erro durante a execução: {str(e)}"
         salvar_log(erro)
         enviar_mensagem_telegram(erro)
 
 # ===== EXECUÇÃO PRINCIPAL =====
 if __name__ == "__main__":
-    print("⏳ Bot iniciado! Aguardando horário...")
-
-    # Executar tarefa imediatamente ao iniciar
+    salvar_log("⏳ Bot iniciado!")
+    
+    # Executa imediatamente
     tarefa_diaria()
-
-    # Agendar para rodar todo dia às 07:40
-    schedule.every().day.at("20:55").do(tarefa_diaria)
-
+    
+    # No Render free, o agendamento não funciona bem, então usamos um loop
     while True:
-        schedule.run_pending()
-        time.sleep(1)  # Checagem a cada 1 segundo para maior precisão
+        # Verifica se é hora de executar (20:55 no horário do Render - UTC)
+        agora = datetime.now(pytz.UTC)
+        if agora.hour == 23 and agora.minute == 55:  # 20:55 BRT = 23:55 UTC
+            tarefa_diaria()
+            time.sleep(60)  # Espera 1 minuto para não executar múltiplas vezes
+        time.sleep(30)  # Verifica a cada 30 segundos
